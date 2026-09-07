@@ -33,7 +33,7 @@
     "sharp": "^0.35.3",
     "slugify": "^1.6.9",
     "stripe": "^22.6.1",
-    "uuid": "^14.0.1"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
