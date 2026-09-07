@@ -325,4 +325,5 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
     console.log(session);
 
   }
+  res.status(200).json({ received: true });
 });
