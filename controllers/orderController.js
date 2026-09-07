@@ -341,7 +341,7 @@ const createCardOrder = async (session) => {
     await cartModel.findByIdAndDelete(cartId);
   }
 };
-// @route   : POST webhook-checkout
+// @route   : POST /webhook-checkout
 // @desc    : This webhook will run stripe payment success paid
 // @access  : protection/user
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
