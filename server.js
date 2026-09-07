@@ -15,6 +15,7 @@ const globalErrorHandling = require("./middlewares/errorMiddleware");
 
 // Routes
 const mountRoutes = require("./routes/index");
+const { webhookCheckout } = require("./controllers/orderController");
 
 const app = express();
 
@@ -24,6 +25,9 @@ app.options("/{*splat}", cors());
 
 // compress all response
 app.use(compression());
+
+// Checkout webhook
+app.post("webhook-checkout", express.raw({ type: 'application/json' }), webhookCheckout);
 
 app.set("query parser", "extended");
 

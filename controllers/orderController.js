@@ -300,3 +300,29 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ status: "Success", session });
 });
+
+// @route   : POST webhook-checkout
+// @desc    : Get checkout session from stripe and send session it as response
+// @access  : protection/user
+exports.webhookCheckout = asyncHandler(async (req, res, next) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+
+    console.log("CREATE ORDER HERE...")
+    console.log(session);
+
+  }
+});
