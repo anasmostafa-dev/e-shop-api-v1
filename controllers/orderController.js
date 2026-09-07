@@ -301,6 +301,46 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: "Success", session });
 });
 
+const createCardOrder = async (session) => {
+  const cartId = session.client_reference_id;
+  const totalPrice = session.amount_total / 100;
+  const shippingAddress = session.metadata;
+
+  // Get data from DB
+  const cart = await cartModel.findById(cartId);
+  const user = await userModel.findOne({ email: session.customer_email });
+
+  // Check cart, user if not exist
+  if (!cart || !user) {
+    console.error("Cart or User not found for Webhook order creation.");
+    return;
+  }
+  // Create order payment method type : card, support address sended (body, addressId)
+  const order = await orderModel.create({
+    user: user._id,
+    cartItems: cart.cartItems,
+    shippingAddress,
+    totalOrderPrice: totalPrice,
+    paymentMethodType: "card",
+    isPaid: true,
+    paidAt: Date.now(),
+  });
+
+  // After creating order, decrement product quantity, increament product sold
+  if (order) {
+    const bulkOptions = cart.cartItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+      },
+    }));
+
+    await productModel.bulkWrite(bulkOptions, {});
+
+    // Clear cart depend on cartId
+    await cartModel.findByIdAndDelete(cartId);
+  }
+};
 // @route   : POST webhook-checkout
 // @desc    : Get checkout session from stripe and send session it as response
 // @access  : protection/user
@@ -321,9 +361,8 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    console.log("CREATE ORDER HERE...")
-    console.log(session);
-
+    // Create order
+    await createCardOrder(session);
   }
   res.status(200).json({ received: true });
 });
