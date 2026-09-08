@@ -13,10 +13,13 @@ const {
 
 const router = express.Router();
 
-router.post("/signup", signupValidator, signup);
-router.post("/login", loginValidator, login);
-router.post("/forgotPassword", forgotPassword);
-router.post("/verifyResetCode", verifyPasswordResetCode);
-router.put("/resetPassword", resetPassword);
+router.post("/signup", signupValidator, /* #swagger.tags = ['Auth'] */ signup);
+router.post("/login", loginValidator, /* #swagger.tags = ['Auth'] */ login);
+router.post("/forgotPassword", /* #swagger.tags = ['Auth'] */ forgotPassword);
+router.post(
+  "/verifyResetCode",
+  /* #swagger.tags = ['Auth'] */ verifyPasswordResetCode,
+);
+router.put("/resetPassword", /* #swagger.tags = ['Auth'] */ resetPassword);
 
 module.exports = router;

@@ -20,17 +20,19 @@ router.get(
   "/checkout-session/:cartId",
   protect,
   allowedTo("user"),
-  checkoutSession,
+  /* #swagger.tags = ['Orders'] */ checkoutSession,
 );
 
-router.route("/:cartId").post(protect, allowedTo("user"), createCashOrder);
+router
+  .route("/:cartId")
+  .post(protect, allowedTo("user"), /* #swagger.tags = ['Orders'] */ createCashOrder);
 
 router.get(
   "/",
   protect,
   allowedTo("admin", "manager", "user"),
   filterOrderForLoggedUser,
-  getAllOrders,
+  /* #swagger.tags = ['Orders'] */ getAllOrders,
 );
 
 router.get(
@@ -38,26 +40,26 @@ router.get(
   protect,
   allowedTo("admin", "manager", "user"),
   filterOrderForLoggedUser,
-  getSpecificOrder,
+  /* #swagger.tags = ['Orders'] */ getSpecificOrder,
 );
 
 router.put(
   "/:id/pay",
   protect,
   allowedTo("admin", "manager"),
-  updateOrderIsPaid,
+  /* #swagger.tags = ['Orders'] */ updateOrderIsPaid,
 );
 router.put(
   "/:id/status",
   protect,
   allowedTo("admin", "manager"),
   updateOrderStatusValidator,
-  updateOrderStatus,
+  /* #swagger.tags = ['Orders'] */ updateOrderStatus,
 );
 router.put(
   "/:id/cancle",
   protect,
   allowedTo("admin", "manager", "user"),
-  cancelOrder,
+  /* #swagger.tags = ['Orders'] */ cancelOrder,
 );
 module.exports = router;

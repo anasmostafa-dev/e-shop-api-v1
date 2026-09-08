@@ -15,9 +15,9 @@ router.use(protect, allowedTo("user"));
 
 router
   .route("/")
-  .post(addAddressValidator, addAddress)
-  .get(getLoggedUserAddresses);
+  .post(addAddressValidator, /* #swagger.tags = ['Addresses'] */ addAddress)
+  .get(/* #swagger.tags = ['Addresses'] */ getLoggedUserAddresses);
 
-router.delete("/:addressId", removeAddress);
+router.delete("/:addressId", /* #swagger.tags = ['Addresses'] */ removeAddress);
 
 module.exports = router;

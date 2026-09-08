@@ -22,26 +22,31 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(getAllBrands)
+  .get(/* #swagger.tags = ['Brands'] */ getAllBrands)
   .post(
     protect,
     allowedTo("admin", "manager"),
     uploadeBrandImg,
     resizeImageBrand,
     createBrandValidator,
-    createBrand,
+    /* #swagger.tags = ['Brands'] */ createBrand,
   );
 router
   .route("/:id")
-  .get(getBrandValidator, getBrand)
+  .get(getBrandValidator, /* #swagger.tags = ['Brands'] */ getBrand)
   .put(
     protect,
     allowedTo("admin", "manager"),
     uploadeBrandImg,
     resizeImageBrand,
     updateBrandValidator,
-    updateBrand,
+    /* #swagger.tags = ['Brands'] */ updateBrand,
   )
-  .delete(protect, allowedTo("admin"), deleteBrandValidator, deleteBrand);
+  .delete(
+    protect,
+    allowedTo("admin"),
+    deleteBrandValidator,
+    /* #swagger.tags = ['Brands'] */ deleteBrand,
+  );
 
 module.exports = router;

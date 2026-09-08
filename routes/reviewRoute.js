@@ -21,24 +21,29 @@ const router = express.Router({ mergeParams: true });
 
 router
   .route("/")
-  .get(createFilterObject, getAllReviews)
+  .get(createFilterObject, /* #swagger.tags = ['Reviews'] */ getAllReviews)
   .post(
     protect,
     allowedTo("user"),
     setProductIdAndUserIdToBody,
     createReviewValidator,
-    createReview,
+    /* #swagger.tags = ['Reviews'] */ createReview,
   );
 
 router
   .route("/:id")
-  .get(getReviewValidator, getReview)
-  .put(protect, allowedTo("user"), updateReviewValidator, updateReview)
+  .get(getReviewValidator, /* #swagger.tags = ['Reviews'] */ getReview)
+  .put(
+    protect,
+    allowedTo("user"),
+    updateReviewValidator,
+    /* #swagger.tags = ['Reviews'] */ updateReview,
+  )
   .delete(
     protect,
     allowedTo("user", "manager", "admin"),
     deleteReviewValidator,
-    deleteReview,
+    /* #swagger.tags = ['Reviews'] */ deleteReview,
   );
 
 module.exports = router;

@@ -1,5 +1,8 @@
 const path = require("path");
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger-output.json');
+
 // to use .env file
 const dotenv = require("dotenv");
 
@@ -28,6 +31,8 @@ app.use(compression());
 
 // Checkout webhook
 app.post("/webhook-checkout", express.raw({ type: 'application/json' }), webhookCheckout);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.set("query parser", "extended");
 

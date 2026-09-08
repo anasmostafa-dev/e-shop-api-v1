@@ -26,26 +26,31 @@ router.use("/:categoryId/subcategories", subCategoryRoute);
 
 router
   .route("/")
-  .get(getAllCategories)
+  .get(/* #swagger.tags = ['Categories'] */ getAllCategories)
   .post(
     protect,
     allowedTo("admin", "manager"),
     uploadeCategoryImg,
     resizeImageCategory,
     createCategoryValidator,
-    createCategory,
+    /* #swagger.tags = ['Categories'] */ createCategory,
   );
 router
   .route("/:id")
-  .get(getCategoryValidator, getCategory)
+  .get(getCategoryValidator, /* #swagger.tags = ['Categories'] */ getCategory)
   .put(
     protect,
     allowedTo("admin", "manager"),
     uploadeCategoryImg,
     resizeImageCategory,
     updateCategoryValidator,
-    updateCategory,
+    /* #swagger.tags = ['Categories'] */ updateCategory,
   )
-  .delete(protect, allowedTo("admin"), deleteCategoryValidator, deleteCategory);
+  .delete(
+    protect,
+    allowedTo("admin"),
+    deleteCategoryValidator,
+    /* #swagger.tags = ['Categories'] */ deleteCategory,
+  );
 
 module.exports = router;

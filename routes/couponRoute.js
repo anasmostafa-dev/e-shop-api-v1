@@ -13,7 +13,14 @@ const router = express.Router();
 
 router.use(protect, allowedTo("manager", "admin"));
 
-router.route("/").get(getAllCoupons).post(createCoupon);
-router.route("/:id").get(getCoupon).put(updateCoupon).delete(deleteCoupon);
+router
+  .route("/")
+  .get(/* #swagger.tags = ['Coupons'] */ getAllCoupons)
+  .post(/* #swagger.tags = ['Coupons'] */ createCoupon);
+router
+  .route("/:id")
+  .get(/* #swagger.tags = ['Coupons'] */ getCoupon)
+  .put(/* #swagger.tags = ['Coupons'] */ updateCoupon)
+  .delete(/* #swagger.tags = ['Coupons'] */ deleteCoupon);
 
 module.exports = router;

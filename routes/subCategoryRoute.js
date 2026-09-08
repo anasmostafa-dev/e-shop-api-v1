@@ -28,23 +28,29 @@ router
     allowedTo("admin", "manager"),
     setCategoryidToBody,
     createSubCategoryValidator,
-    createSubCategory,
+    /* #swagger.tags = ['SubCategories'] */ createSubCategory,
   )
-  .get(createFilterObject, getAllSubCategories);
+  .get(
+    createFilterObject,
+    /* #swagger.tags = ['SubCategories'] */ getAllSubCategories,
+  );
 router
   .route("/:id")
-  .get(getSubCategoryValidator, getSubCategory)
+  .get(
+    getSubCategoryValidator,
+    /* #swagger.tags = ['SubCategories'] */ getSubCategory,
+  )
   .put(
     protect,
     allowedTo("admin", "manager"),
     updateSubCategoryValidator,
-    updateSubCategory,
+    /* #swagger.tags = ['SubCategories'] */ updateSubCategory,
   )
   .delete(
     protect,
     allowedTo("admin"),
     deleteSubCategoryValidator,
-    deleteSubCategory,
+    /* #swagger.tags = ['SubCategories'] */ deleteSubCategory,
   );
 
 module.exports = router;

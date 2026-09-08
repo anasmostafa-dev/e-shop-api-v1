@@ -27,26 +27,31 @@ router.use("/:productId/reviews", reviewRoute);
 
 router
   .route("/")
-  .get(getAllproducts)
+  .get(/* #swagger.tags = ['Products'] */ getAllproducts)
   .post(
     protect,
     allowedTo("admin", "manager"),
     uploadImagesProduct,
     resizeImageProduct,
     createProductValidator,
-    createProduct,
+    /* #swagger.tags = ['Products'] */ createProduct,
   );
 router
   .route("/:id")
-  .get(getProductValidator, getProduct)
+  .get(getProductValidator, /* #swagger.tags = ['Products'] */ getProduct)
   .put(
     protect,
     allowedTo("admin", "manager"),
     uploadImagesProduct,
     resizeImageProduct,
     updateProductValidator,
-    updateProduct,
+    /* #swagger.tags = ['Products'] */ updateProduct,
   )
-  .delete(protect, allowedTo("admin"), deleteProductValidator, deleteProduct);
+  .delete(
+    protect,
+    allowedTo("admin"),
+    deleteProductValidator,
+    /* #swagger.tags = ['Products'] */ deleteProduct,
+  );
 
 module.exports = router;

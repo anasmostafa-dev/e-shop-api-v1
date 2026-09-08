@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start:dev": "nodemon .",
-    "start:prod": "cross-env NODE_ENV=production node server.js"
+    "start:prod": "cross-env NODE_ENV=production node server.js",
+    "swagger": "node swagger.js"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +34,8 @@
     "sharp": "^0.35.3",
     "slugify": "^1.6.9",
     "stripe": "^22.6.1",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

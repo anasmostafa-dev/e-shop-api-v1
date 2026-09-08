@@ -20,15 +20,26 @@ const router = express.Router();
 router.use(protect, allowedTo("user"));
 router
   .route("/")
-  .post(addProductToCartValidator, addProductToCart)
-  .get(getLoggedUserCart)
-  .delete(deleteLoggedUserCart);
+  .post(
+    addProductToCartValidator,
+    /* #swagger.tags = ['Cart'] */ addProductToCart,
+  )
+  .get(/* #swagger.tags = ['Cart'] */ getLoggedUserCart)
+  .delete(/* #swagger.tags = ['Cart'] */ deleteLoggedUserCart);
 
-router.route("/applyCoupon").put(applyCouponValidator, applyCouponOnCart);
+router
+  .route("/applyCoupon")
+  .put(applyCouponValidator, /* #swagger.tags = ['Cart'] */ applyCouponOnCart);
 
 router
   .route("/:itemId")
-  .put(updateItemQuantityValidator, updateItemQuantity)
-  .delete(removeSpecificItemCartValidator, removeSpecificItemCart);
+  .put(
+    updateItemQuantityValidator,
+    /* #swagger.tags = ['Cart'] */ updateItemQuantity,
+  )
+  .delete(
+    removeSpecificItemCartValidator,
+    /* #swagger.tags = ['Cart'] */ removeSpecificItemCart,
+  );
 
 module.exports = router;

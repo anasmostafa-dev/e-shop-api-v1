@@ -16,8 +16,14 @@ router.use(protect, allowedTo("user"));
 
 router
   .route("/")
-  .post(AddToWishlistValidator, addProductToWishlist)
-  .get(getLoggedUserWishlist);
+  .post(
+    AddToWishlistValidator,
+    /* #swagger.tags = ['Wishlist'] */ addProductToWishlist,
+  )
+  .get(/* #swagger.tags = ['Wishlist'] */ getLoggedUserWishlist);
 
-router.delete("/:productId", removeProductFromWishlist);
+router.delete(
+  "/:productId",
+  /* #swagger.tags = ['Wishlist'] */ removeProductFromWishlist,
+);
 module.exports = router;

@@ -7,37 +7,76 @@ const userModel = require("../models/userModel");
 const factory = require("./factoryHandler");
 const ApiError = require("../utils/apiError");
 
-// exports.getShippingAddress = async (req, next) => {
-//   let shippingAddress;
+// 1- refactor shipping address logic          (Done)
+// 2- refactor create order (cash, card)       (Done)
 
-//   if (req.body.addressId) {
-//     const user = await userModel.findById(req.user._id);
-//     const userAddress = user.addresses.find(
-//       (addr) => addr._id.toString() === req.body.addressId
-//     );
+// helper function to process shipping address
+const getShippingAddress = async (req) => {
+  let shippingAddress;
 
-//     if (!userAddress) {
-//       return next(
-//         new ApiError("Address not found in your saved addresses", 404)
-//       );
-//     }
+  if (req.body.addressId) {
+    const user = await userModel.findById(req.user._id);
+    const userAddress = user.addresses.find(
+      (addr) => addr._id.toString() === req.body.addressId,
+    );
 
-//     shippingAddress = {
-//       details: userAddress.details,
-//       phone: userAddress.phone,
-//       city: userAddress.city,
-//       postalCode: userAddress.postalCode,
-//     };
-//   } else if (req.body.shippingAddress) {
-//     shippingAddress = req.body.shippingAddress;
-//   } else {
-//     return next(
-//       new ApiError("Please provide a shipping address or addressId", 400)
-//     );
-//   }
+    if (!userAddress) {
+      throw new ApiError("Address not found in your saved addresses", 404);
+    }
 
-//   return shippingAddress;
-// };
+    shippingAddress = {
+      details: userAddress.details,
+      phone: userAddress.phone,
+      city: userAddress.city,
+      postalCode: userAddress.postalCode,
+    };
+  } else if (req.body.shippingAddress) {
+    shippingAddress = req.body.shippingAddress;
+  } else {
+    throw new ApiError("Please provide a shipping address or addressId", 400);
+  }
+
+  return shippingAddress;
+};
+
+// helper function to create order from cart
+const createOrderFromCart = async ({
+  userId,
+  cart,
+  shippingAddress,
+  totalOrderPrice,
+  paymentMethodType = "cash",
+  isPaid = false,
+  paidAt,
+}) => {
+  // Create order
+  const order = await orderModel.create({
+    user: userId,
+    cartItems: cart.cartItems,
+    shippingAddress,
+    totalOrderPrice,
+    paymentMethodType,
+    isPaid,
+    paidAt,
+  });
+
+  // 4- After creating order, decrement product quantity, increament product sold
+  if (order) {
+    const bulkOptions = cart.cartItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product, quantity: { $gte: item.quantity } },
+        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+      },
+    }));
+
+    await productModel.bulkWrite(bulkOptions, {});
+
+    // 5- Clear cart depend on cartId
+    await cartModel.findByIdAndDelete(cart._id);
+  }
+
+  return order;
+};
 
 // @route  : POST /api/v1/orders/:cartId
 // @desc   : Create cash order
@@ -62,55 +101,15 @@ exports.createCashOrder = asyncHandler(async (req, res, next) => {
   const totalOrderPrice = cartPrice + taxPrice + shippingPrice;
 
   // 3- Create order default payment method type : cash, support address sended (body, addressId)
-  let shippingAddress;
 
-  if (req.body.addressId) {
-    const user = await userModel.findById(req.user._id);
-    const userAddress = user.addresses.find(
-      (addr) => addr._id.toString() === req.body.addressId,
-    );
+  const shippingAddress = await getShippingAddress(req);
 
-    if (!userAddress) {
-      return next(
-        new ApiError("Address not found in your saved addresses", 404),
-      );
-    }
-
-    shippingAddress = {
-      details: userAddress.details,
-      phone: userAddress.phone,
-      city: userAddress.city,
-      postalCode: userAddress.postalCode,
-    };
-  } else if (req.body.shippingAddress) {
-    // 2- if send shippingAddress in body
-    shippingAddress = req.body.shippingAddress;
-  } else {
-    return next(
-      new ApiError("Please provide a shipping address or addressId", 400),
-    );
-  }
-
-  const order = await orderModel.create({
-    user: req.user._id,
-    cartItems: cart.cartItems,
+  const order = await createOrderFromCart({
+    userId: req.user._id,
+    cart,
     shippingAddress,
     totalOrderPrice,
   });
-  // 4- After creating order, decrement product quantity, increament product sold
-  if (order) {
-    const bulkOptions = cart.cartItems.map((item) => ({
-      updateOne: {
-        filter: { _id: item.product },
-        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
-      },
-    }));
-
-    await productModel.bulkWrite(bulkOptions, {});
-
-    // 5- Clear cart depend on cartId
-    await cartModel.findByIdAndDelete(cart._id);
-  }
 
   res.status(201).json({ status: "Success", data: order });
 });
@@ -236,35 +235,8 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
     return next(new ApiError("There is no cart for this user", 404));
   }
 
-  // 2- Extract shipping address (Same logic as createCashOrder)
-  let shippingAddress;
-
-  if (req.body.addressId) {
-    const user = await userModel.findById(req.user._id);
-    const userAddress = user.addresses.find(
-      (addr) => addr._id.toString() === req.body.addressId,
-    );
-
-    if (!userAddress) {
-      return next(
-        new ApiError("Address not found in your saved addresses", 404),
-      );
-    }
-
-    shippingAddress = {
-      details: userAddress.details,
-      phone: userAddress.phone,
-      city: userAddress.city,
-      postalCode: userAddress.postalCode,
-    };
-  } else if (req.body.shippingAddress) {
-    // 2- if send shippingAddress in body
-    shippingAddress = req.body.shippingAddress;
-  } else {
-    return next(
-      new ApiError("Please provide a shipping address or addressId", 400),
-    );
-  }
+  // 2- Get shipping address
+  const shippingAddress = await getShippingAddress(req);
 
   // 3- Get total cart price depend on cart price
   const cartPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice;
@@ -316,30 +288,15 @@ const createCardOrder = async (session) => {
     return;
   }
   // Create order payment method type : card, support address sended (body, addressId)
-  const order = await orderModel.create({
-    user: user._id,
-    cartItems: cart.cartItems,
+  return await createOrderFromCart({
+    userId: user._id,
+    cart,
     shippingAddress,
     totalOrderPrice: totalPrice,
     paymentMethodType: "card",
     isPaid: true,
     paidAt: Date.now(),
   });
-
-  // After creating order, decrement product quantity, increament product sold
-  if (order) {
-    const bulkOptions = cart.cartItems.map((item) => ({
-      updateOne: {
-        filter: { _id: item.product },
-        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
-      },
-    }));
-
-    await productModel.bulkWrite(bulkOptions, {});
-
-    // Clear cart depend on cartId
-    await cartModel.findByIdAndDelete(cartId);
-  }
 };
 // @route   : POST /webhook-checkout
 // @desc    : This webhook will run stripe payment success paid

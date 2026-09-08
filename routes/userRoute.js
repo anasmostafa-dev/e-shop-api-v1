@@ -32,52 +32,74 @@ const router = express.Router();
 router.use(protect);
 
 // Logged user
-router.get("/getMe", getLoggedUserData, getUser);
+router.get(
+  "/getMe",
+  getLoggedUserData,
+  /* #swagger.tags = ['Users'] */ getUser,
+);
 router.put(
   "/updateMyPassword",
   updateLoggedUserPasswordValidator,
-  updateMyPassword,
+  /* #swagger.tags = ['Users'] */ updateMyPassword,
 );
-router.put("/updateMe", updateLoggedUserValidator, updateLoggedUserData);
-router.put("/deactivateMe", deactivateLoggedUserData);
+router.put(
+  "/updateMe",
+  updateLoggedUserValidator,
+  /* #swagger.tags = ['Users'] */ updateLoggedUserData,
+);
+router.put(
+  "/deactivateMe",
+  /* #swagger.tags = ['Users'] */ deactivateLoggedUserData,
+);
 
 // Admin
 router.put(
   "/changepassword/:id",
   allowedTo("admin"),
   changePasswordValidator,
-  changeUserPassword,
+  /* #swagger.tags = ['Users'] */ changeUserPassword,
 );
 
 router.put(
   "/changeStatus/:id",
   allowedTo("admin"),
   updateQueryValidator,
-  updateField,
+  /* #swagger.tags = ['Users'] */ updateField,
 );
 
 router
   .route("/")
-  .get(allowedTo("admin", "manager"), getAllUsers)
+  .get(
+    allowedTo("admin", "manager"),
+    /* #swagger.tags = ['Users'] */ getAllUsers,
+  )
   .post(
     protect,
     allowedTo("admin"),
     uploadeUserImg,
     resizeImageUser,
     createUserValidator,
-    createUser,
+    /* #swagger.tags = ['Users'] */ createUser,
   );
 
 router
   .route("/:id")
-  .get(allowedTo("admin"), getUserValidator, getUser)
+  .get(
+    allowedTo("admin"),
+    getUserValidator,
+    /* #swagger.tags = ['Users'] */ getUser,
+  )
   .put(
     allowedTo("admin"),
     uploadeUserImg,
     resizeImageUser,
     updateUserValidator,
-    updateUser,
+    /* #swagger.tags = ['Users'] */ updateUser,
   )
-  .delete(allowedTo("admin"), deleteUserValidator, deleteUser);
+  .delete(
+    allowedTo("admin"),
+    deleteUserValidator,
+    /* #swagger.tags = ['Users'] */ deleteUser,
+  );
 
 module.exports = router;
