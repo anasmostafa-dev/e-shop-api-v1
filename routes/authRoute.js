@@ -9,6 +9,7 @@ const {
   forgotPassword,
   verifyPasswordResetCode,
   resetPassword,
+  logout,
 } = require("../controllers/authController");
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.post(
   /* #swagger.tags = ['Auth'] */ verifyPasswordResetCode,
 );
 router.put("/resetPassword", /* #swagger.tags = ['Auth'] */ resetPassword);
+router.get("/logout", /* #swagger.tags = ['Auth'] */ logout);
 
 module.exports = router;

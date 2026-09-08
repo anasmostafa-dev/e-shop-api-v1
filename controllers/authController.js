@@ -7,6 +7,29 @@ const userModel = require("../models/userModel");
 const ApiError = require("../utils/apiError");
 const sendEmail = require("../utils/sendEmail");
 const generateToken = require("../utils/generateToken");
+const { sanitizeUser } = require("../utils/sanitizaData");
+
+// Helper function to generatetoken and send it in cookies
+const createSendToken = (user, statusCode, res, data) => {
+  const token = generateToken(user._id);
+
+  const cookieExpiresInDays =
+    parseInt(process.env.JWT_COOKIE_EXPIRES_IN, 10) || 90;
+  const cookieOptions = {
+    expires: new Date(Date.now() + cookieExpiresInDays * 24 * 60 * 60 * 1000),
+    httpOnly: true, // Secure: XSS
+    secure: process.env.NODE_ENV === "production", // allow production only protocol HTTPS
+    sameSite: "strict", // Secure: CSRF
+  };
+
+  res.cookie("token", token, cookieOptions);
+
+  res.status(statusCode).json({
+    status: "success",
+    data: data || sanitizeUser(user),
+    token,
+  });
+};
 
 // @route  : POST /api/v1/auth/signup
 // @desc   : signup user
@@ -18,26 +41,49 @@ exports.signup = asyncHandler(async (req, res, next) => {
     password: req.body.password,
   });
 
-  const token = generateToken(user._id);
-
-  res.status(201).json({ data: user, token });
+  createSendToken(user, 201, res, sanitizeUser(user));
 });
 
 // @route  : POST /api/v1/auth/login
 // @desc   : login user
 // @access : public
 exports.login = asyncHandler(async (req, res, next) => {
-  // 1- check if email is exist (validation layer)
-  // 2- // check if password an email is correct
   const user = await userModel.findOne({ email: req.body.email });
 
   if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
     return next(new ApiError("Incorrect email or password", 401));
   }
+  if (!user.isActive) {
+    return next(
+      new ApiError("Your account is deactivated. Please contact support.", 401),
+    );
+  }
 
-  const token = generateToken(user._id);
+  const userData = user.toObject();
 
-  res.status(200).json({ data: user, token });
+  // Delete senstive data
+  delete userData.password;
+  delete userData.__v;
+  delete userData.passwordResetCode;
+  delete userData.passwordResetCodeExpires;
+  delete userData.passwordResetCodeVerified;
+
+  createSendToken(user, 200, res, userData);
+});
+
+// @route   : GET /api/v1/auth/logout
+// @desc    : logout user / clear cookie
+// @access  : public
+exports.logout = asyncHandler(async (req, res, next) => {
+  res.cookie("token", "loggedout", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  res
+    .status(200)
+    .json({ status: "success", message: "Logged out successfully" });
 });
 
 // @desc   : protectd route (authenticated)
@@ -49,6 +95,8 @@ exports.protect = asyncHandler(async (req, res, next) => {
     req.headers.authorization.startsWith("Bearer")
   ) {
     token = req.headers.authorization.split(" ")[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
   }
   if (!token) {
     return next(
@@ -60,7 +108,6 @@ exports.protect = asyncHandler(async (req, res, next) => {
   }
 
   // 2- verify token (no change happens, expires time)
-
   const decoded = jwt.verify(token, process.env.SECRET_KEY);
 
   // 3- check if user is exist
@@ -117,12 +164,10 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   // 1- check if email for user is exist
   const user = await userModel.findOne({ email: req.body.email });
   if (!user) {
-    return next(
-      new ApiError(
-        `No account is associated with this email: ${req.body.email}`,
-        401,
-      ),
-    );
+    return res.status(200).json({
+      status: "Success",
+      message: "If that email is in our database, we sent a reset code",
+    });
   }
 
   // 2- If user exist, generate 6 rendom digite, hash this 6 numbers and save this in DB
@@ -233,8 +278,13 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (!user.passwordResetCodeVerified) {
-    return next(new ApiError("Reset code has not been verified yet", 400));
+  if (
+    !user.passwordResetCodeVerified ||
+    user.passwordResetCodeExpires < Date.now()
+  ) {
+    return next(
+      new ApiError("Reset code has not been verified yet or has expired", 400),
+    );
   }
 
   user.password = req.body.newPassword;
@@ -244,6 +294,5 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 
   await user.save();
 
-  const token = generateToken(user._id);
-  res.status(200).json({ token });
+  createSendToken(user, 200, res, sanitizeUser(user));
 });
