@@ -4,6 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "start:dev": "nodemon .",
     "start:prod": "cross-env NODE_ENV=production node server.js",
     "swagger": "node swagger.js"
