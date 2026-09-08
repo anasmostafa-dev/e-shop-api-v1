@@ -19,7 +19,7 @@ const createSendToken = (user, statusCode, res, data) => {
     expires: new Date(Date.now() + cookieExpiresInDays * 24 * 60 * 60 * 1000),
     httpOnly: true, // Secure: XSS
     secure: process.env.NODE_ENV === "production", // allow production only protocol HTTPS
-    sameSite: "strict", // Secure: CSRF
+    sameSite: "lax", // Secure: CSRF
   };
 
   res.cookie("token", token, cookieOptions);
