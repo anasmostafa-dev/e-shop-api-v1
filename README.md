@@ -1,69 +1,118 @@
 # E-commerce RESTful API
 
-A production-ready E-commerce core engine built with Node.js, Express, MongoDB, and Mongoose. The backend is organized around resource-focused routes, controller-level use cases, reusable validation, centralized error handling, role-based authorization, and operationally safe order and payment workflows.
+A production-ready E-commerce core engine built with Node.js, Express.js, MongoDB, and Mongoose. The backend is structured for reliable commerce workflows rather than basic CRUD: authenticated roles, validated input, reusable query features, inventory-safe checkout, asynchronous payment processing, media handling, and centralized error management.
 
-## Architecture And Engineering Practices
+## Engineering Overview
 
-- **Layered backend structure:** Express routes define the HTTP contract, controllers coordinate use cases, Mongoose models own persistence concerns, middleware handles cross-cutting behavior, and shared utilities provide API errors, query features, token generation, and validation.
-- **Centralized error handling:** Async controller failures are routed through a common error middleware and API error type.
-- **Role-based access control:** Protected resources use JWT authentication and role authorization for users, managers, and administrators.
-- **Query scalability:** List endpoints use reusable filtering, sorting, field selection, pagination, and search features.
-- **Media processing:** Product, brand, category, and user uploads are handled through dedicated upload and image-resizing middleware.
-- **Operational concerns:** Compression, CORS, structured request logging in development, environment-based configuration, and generated API documentation are included in the server setup.
+The API is organized into focused layers:
 
-## Key Architectural And Security Features
+- **Routes:** Define versioned HTTP resources and compose authentication, authorization, upload, and validation middleware.
+- **Controllers:** Coordinate application use cases such as checkout, order creation, authentication, password recovery, catalog management, and reviews.
+- **Models:** Define Mongoose persistence schemas and document behavior for users, products, carts, orders, coupons, reviews, and catalog resources.
+- **Middleware:** Provide request validation, image processing, authentication, role authorization, sanitization, rate limiting, and global error handling.
+- **Utilities:** Provide API errors, reusable query features, token generation, email delivery, and user-data sanitization.
+
+The API is mounted under `/api/v1` and serves catalog, identity, cart, wishlist, address, coupon, review, and order workflows.
+
+## Core Architecture And Security
 
 ### Atomic Inventory Integrity
 
-Checkout inventory changes use MongoDB `bulkWrite` operations with `$gte` stock guard filters. Each update only decrements a product when the database still has sufficient quantity, preventing overselling caused by concurrent checkout requests. The same bulk operation updates `quantity` and `sold` together for each cart item.
+Order creation uses MongoDB `bulkWrite` operations to update every cart item efficiently. Each inventory update includes a `$gte` stock guard filter, so a product is decremented only when the database still has enough quantity:
 
-### Asynchronous Payment Gateway
+```javascript
+{
+  filter: { _id: item.product, quantity: { $gte: item.quantity } },
+  update: { $inc: { quantity: -item.quantity, sold: item.quantity } }
+}
+```
 
-Card checkout creates a Stripe Checkout Session and completes order creation asynchronously from Stripe's webhook event. The `/webhook-checkout` endpoint uses `express.raw({ type: 'application/json' })`, allowing Stripe's `stripe-signature` header to be verified with `stripe.webhooks.constructEvent` before the payment event is trusted.
+This database-side guard is concurrency-safe at the individual update level and prevents a checkout request from blindly driving stock below the requested quantity during concurrent activity.
 
-### OWASP Security Baseline
+### Asynchronous Stripe Payments
 
-The API is designed around common OWASP API hardening practices:
+Card checkout is intentionally asynchronous:
 
-- Request payload validation with `express-validator` before controller execution.
-- NoSQL injection sanitization for untrusted request values.
-- HTTP Parameter Pollution protection with HPP handling.
-- Security HTTP headers through Helmet.
-- Rate limiting for abuse and credential-stuffing resistance.
-- JWT authentication, role authorization, least-privilege route access, and centralized error responses.
+1. An authenticated customer requests a Stripe Checkout Session.
+2. Stripe processes the payment outside the API request lifecycle.
+3. Stripe calls `/webhook-checkout` after checkout completion.
+4. The API verifies the `stripe-signature` header using `stripe.webhooks.constructEvent`.
+5. The paid order is created from the verified event.
 
-Keep the sanitization, HPP, Helmet, and rate-limiting middleware enabled in every production deployment and review their configuration when adding new public endpoints.
+The webhook route uses `express.raw({ type: "application/json" })` before JSON parsing. Preserving the raw request bytes is required for Stripe signature verification.
+
+### OWASP-Oriented Request Hardening
+
+The server applies multiple defense-in-depth controls:
+
+- **Helmet:** Security-related HTTP headers.
+- **Rate limiting:** A shared API limiter restricts request volume per IP.
+- **NoSQL injection protection:** `express-mongo-sanitize` removes MongoDB operator injection from body, params, and query data.
+- **HTTP Parameter Pollution protection:** `hpp` is enabled with an explicit allowlist for supported repeated query fields.
+- **Input validation:** `express-validator` validators run before resource controllers.
+- **Request-size limits:** JSON payloads are limited to reduce abuse and accidental oversized requests.
+- **Authentication and authorization:** JWTs can be supplied through the Bearer header or an HTTP-only cookie, with role-based access checks.
+- **Cookie protections:** Authentication cookies use `httpOnly` and `sameSite: "strict"`; production cookies also require `secure` transport.
+- **Sensitive-data handling:** Password and reset-token fields are removed from user responses through sanitization helpers.
+- **Centralized errors:** Application errors are normalized by the global error middleware.
 
 ### Address Snapshotting And Decoupling
 
-Order creation accepts either a saved user `addressId` or a custom `shippingAddress`. When a saved address is selected, its relevant fields are copied into the order as a snapshot. Orders therefore remain historically accurate and decoupled from later edits to a user's address book.
+Order creation supports both saved and one-time shipping addresses:
+
+- Send `addressId` to select an address belonging to the authenticated user.
+- Send `shippingAddress` to provide a custom address snapshot.
+
+When a saved address is selected, the relevant address fields are copied into the order. The order remains historically accurate and independent of later changes to the user's address book.
+
+### Additional Operational Practices
+
+- Compression is enabled for responses.
+- CORS is configured for cross-origin clients.
+- Morgan request logging is enabled in development mode.
+- Uploaded assets are served from the backend uploads directory.
+- Product, category, brand, and user image processing is isolated in upload middleware.
+- Reusable filtering, sorting, field selection, pagination, and search support is provided through API feature utilities.
 
 ## Interactive API Documentation
 
-After starting the API, open the interactive Swagger UI at:
+Swagger UI is available at:
 
 ```text
 http://localhost:8000/api-docs
 ```
 
-Regenerate the OpenAPI document after route or annotation changes with `npm run swagger` from the `backend/` directory.
+The generated OpenAPI document is stored in `backend/swagger-output.json`. After changing routes or Swagger annotations, regenerate it from the backend directory:
+
+```bash
+npm run swagger
+```
+
+Use the Swagger UI as the authoritative reference for available endpoints, request parameters, authentication requirements, and response shapes.
 
 ## Tech Stack
 
 - Node.js
-- Express.js
+- Express.js 5
 - MongoDB
 - Mongoose
 - Stripe Checkout and Stripe Webhooks
-- Swagger Autogen and Swagger UI Express
+- Swagger Autogen
+- Swagger UI Express
 - `express-validator`
+- `express-mongo-sanitize`
+- `hpp`
 - Helmet
 - `express-rate-limit`
-- CORS, compression, Morgan, Multer, Sharp, JWT, and bcryptjs
+- JSON Web Tokens
+- bcryptjs
+- Multer and Sharp
+- Nodemailer
+- CORS, compression, and Morgan
 
 ## Environment Variables
 
-Create `backend/.env` from this example. Never commit real credentials, database connection strings, JWT secrets, mail passwords, or Stripe keys.
+Create `backend/.env` from the following template. Never commit real database credentials, email passwords, JWT secrets, or Stripe keys.
 
 ```dotenv
 PORT=8000
@@ -76,9 +125,10 @@ BASE_URL=http://localhost:8000
 # Authentication
 SECRET_KEY=replace-with-a-long-random-secret
 EXPIRES_IN_TOKEN=90d
+JWT_COOKIE_EXPIRES_IN=90
 OTP_SECRET=replace-with-a-separate-random-secret
 
-# Email
+# Email delivery
 EMAIL_HOST=smtp.example.com
 EMAIL_PORT=465
 EMAIL_USER=your-email@example.com
@@ -89,11 +139,18 @@ STRIPE_SECRET=sk_test_replace-me
 STRIPE_WEBHOOK_SECRET=whsec_replace-me
 ```
 
-For local Stripe webhook testing, configure Stripe to send `checkout.session.completed` events to `/webhook-checkout` and use the signing secret generated for that endpoint.
+`STRIPE_WEBHOOK_SECRET` must be the signing secret for the webhook endpoint configured in Stripe. In production, use a managed secret store or deployment secret configuration rather than committing `.env` files.
 
 ## Installation And Running
 
-Requirements: Node.js 18+ and a reachable MongoDB deployment or local MongoDB instance.
+### Prerequisites
+
+- Node.js 18 or newer
+- MongoDB, either local or hosted
+- Stripe credentials for payment workflows
+- SMTP credentials if testing password-reset email delivery
+
+### Install And Start
 
 ```bash
 cd backend
@@ -102,31 +159,42 @@ npm run swagger
 npm start
 ```
 
-The API starts on `http://localhost:8000` by default. For development with automatic restarts:
+The API listens on `http://localhost:8000` by default. Available scripts:
 
 ```bash
-npm run start:dev
+npm run start:dev   # Development process with nodemon
+npm start           # Standard Node.js process
+npm run start:prod  # Production-mode process
+npm run swagger     # Regenerate swagger-output.json
 ```
 
-For a production-mode process:
+Set `PORT` and `NODE_ENV=production` through the deployment environment for production. Confirm that the application can reach `MONGO_URI`, that `BASE_URL` reflects the deployed public URL, and that Stripe is configured to send `checkout.session.completed` events to `/webhook-checkout`.
 
-```bash
-npm run start:prod
+## Authentication Model
+
+Authentication responses issue a JWT and set an HTTP-only `token` cookie. Protected routes accept either:
+
+```http
+Authorization: Bearer <jwt>
 ```
 
-## API Surface
+or the authentication cookie. Role authorization is applied to administrative, manager, and customer workflows according to the route definition.
 
-The versioned API is mounted under `/api/v1` and includes resources for:
+## Main Resource Groups
 
-- Authentication
-- Users and addresses
-- Products, categories, subcategories, and brands
-- Cart and wishlist management
-- Coupons
-- Orders and Stripe checkout
-- Reviews
-
-Use Swagger UI for the authoritative request, response, authorization, and route details.
+- `/api/v1/auth` - Signup, login, logout, password recovery, and reset flows
+- `/api/v1/users` - User administration and self-service account operations
+- `/api/v1/addresses` - Authenticated address management
+- `/api/v1/products` - Product catalog and media operations
+- `/api/v1/categories` - Categories and nested subcategories
+- `/api/v1/subcategories` - Subcategory operations
+- `/api/v1/brands` - Brand management
+- `/api/v1/cart` - Cart items, quantities, and coupons
+- `/api/v1/wishlist` - Customer wishlist operations
+- `/api/v1/coupons` - Coupon administration
+- `/api/v1/reviews` - Product reviews
+- `/api/v1/orders` - Cash orders, Stripe checkout, payment state, status, and cancellation
+- `/webhook-checkout` - Verified Stripe checkout completion webhook
 
 ## Author
 
