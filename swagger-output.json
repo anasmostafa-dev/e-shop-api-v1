@@ -5,7 +5,7 @@
     "description": "Production-ready RESTful API for E-Commerce platform",
     "version": "1.0.0"
   },
-  "host": "localhost:8000",
+  "host": "e-shop-api-v1.vercel.app",
   "basePath": "/",
   "schemes": [
     "http"
